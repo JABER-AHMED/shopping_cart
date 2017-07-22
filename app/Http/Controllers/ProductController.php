@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Product;
+use App\Order;
 use Session;
 use App\Cart;
+use Auth;
 use Stripe\Stripe;
 use Stripe\Charge;
 
@@ -63,12 +65,20 @@ class ProductController extends Controller
         $token = $request->input('stripeToken');
 
         try{
-            Charge::create(array(
+            $charge = Charge::create(array(
             "amount" => $cart->totalPrice * 100,
             "currency" => "usd",
             "source" => $token, // obtained with Stripe.js
             "description" => "Test Charge"
             ));
+            $order = new Order();
+            $order->cart = serialize();
+            $order->name = Auth::user()->name;
+            $order->address = $request->address;
+            $order->payment_id = $charge->id;
+
+            Auth::user()->orders()->save($order);
+
         }catch(\Exception $e){
 
             return redirect()->route('checkout')->with('error', $e->getMessage());
